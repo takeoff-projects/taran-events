@@ -1,43 +1,47 @@
-provider "google" {
-  credentials = file("gcp_key.json")
-  project = var.project_id
-  region  = var.provider_region
+# main.tf
+
+terraform {
+  required_version = ">= 0.14"
+
+  required_providers {
+    # Cloud Run support was added on 3.3.0
+    google = ">= 3.3"
+  }
 }
 
-resource "google_cloud_run_service" "events-website" {
-  name     = "events-website"
+provider "google" {
+  # Replace `PROJECT_ID` with your project
+  project = "roi-takeoff-user10"
+  credentials = file("gcp_key.json")
+  region  = "us-central1"  
+  zone    = "us-central1-c"
+}
+
+resource "google_project_service" "run_api" {
+  service = "run.googleapis.com"
+
+  disable_on_destroy = true
+}
+
+
+
+resource "google_cloud_run_service" "run_service" {
+  name = "app"
   location = "us-central1"
 
   template {
     spec {
       containers {
-        image = "gcr.io/roi-takeoff-user10/events-app:latest"
-        env {
-          name = "GOOGLE_CLOUD_PROJECT"
-          value = var.project_id
+        image = "gcr.io/roi-takeoff-user10/event-app:latest"
       }
-        env {
-          name = "BACKEND_URL"
-          value = "https://events-api-4kad4w6jba-uc.a.run.app/events"
-        }
     }
   }
+
+  traffic {
+    percent         = 100
+    latest_revision = true
   }
-}
 
-data "google_iam_policy" "noauth" {
-  binding {
-    role = "roles/run.invoker"
-    members = [
-      "allUsers",
-    ]
-  }
-}
-
-resource "google_cloud_run_service_iam_policy" "noauth" {
-  location    = google_cloud_run_service.events-website.location
-  project     = google_cloud_run_service.events-website.project
-  service     = google_cloud_run_service.events-website.name
-
-  policy_data = data.google_iam_policy.noauth.policy_data
+  # Waits for the Cloud Run API to be enabled
+  depends_on = [google_project_service.run_api]
 }
