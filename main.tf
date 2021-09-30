@@ -1,4 +1,5 @@
 provider "google" {
+  credentials = file("gcp_key.json")
   project = var.project_id
   region  = var.provider_region
 }
