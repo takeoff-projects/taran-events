@@ -1,0 +1,1 @@
+terraform destroy -auto-approve --var="project_id=roi-takeoff-user10"
